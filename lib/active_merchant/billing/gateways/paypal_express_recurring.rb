@@ -217,7 +217,7 @@ module ActiveMerchant #:nodoc:
               if options.has_key?(:amount)
                 xml.tag! 'n2:Amount', amount(options[:amount]), 'currencyID' => options[:currency] || 'USD'
               end
-              if options.has_key?(:amount)
+              if options.has_key?(:start_date)
                 xml.tag! 'n2:BillingStartDate', (options[:start_date].is_a?(Date) ? options[:start_date].to_time : options[:start_date]).utc.iso8601
               end
             end
