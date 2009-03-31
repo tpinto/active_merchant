@@ -171,14 +171,14 @@ module ActiveMerchant #:nodoc:
                   xml.tag! 'n2:BillingPeriod', options[:period] || 'Month'
                   xml.tag! 'n2:BillingFrequency', options[:frequency]
                   xml.tag! 'n2:TotalBillingCycles', options[:cycles] unless options[:cycles].blank?
-                  xml.tag! 'n2:Amount', options[:amount], 'currencyID' => options[:currency] || 'USD'
+                  xml.tag! 'n2:Amount', amount(options[:amount]), 'currencyID' => options[:currency] || 'USD'
                 end
                 if !options[:trialamount].blank?
                   xml.tag! 'n2:TrialPeriod' do
                     xml.tag! 'n2:BillingPeriod', options[:trialperiod] || 'Month'
                     xml.tag! 'n2:BillingFrequency', options[:trialfrequency]
                     xml.tag! 'n2:TotalBillingCycles', options[:trialcycles] || 1
-                    xml.tag! 'n2:Amount', options[:trialamount], 'currencyID' => options[:currency] || 'USD'
+                    xml.tag! 'n2:Amount', amount(options[:trialamount]), 'currencyID' => options[:currency] || 'USD'
                   end        
                 end
                 xml.tag! 'n2:AutoBillOutstandingAmount', options[:auto_bill_outstanding] ? 'AddToNextBilling' : 'NoAutoBill'
@@ -215,7 +215,7 @@ module ActiveMerchant #:nodoc:
               xml.tag! 'n2:AdditionalBillingCycles', options[:additional_billing_cycles] unless options[:additional_billing_cycles].blank?
               xml.tag! 'n2:AutoBillOutstandingAmount', options[:auto_bill_outstanding] ? 'AddToNextBilling' : 'NoAutoBill'
               if options.has_key?(:amount)
-                xml.tag! 'n2:Amount', options[:amount], 'currencyID' => options[:currency] || 'USD'
+                xml.tag! 'n2:Amount', amount(options[:amount]), 'currencyID' => options[:currency] || 'USD'
               end
               if options.has_key?(:amount)
                 xml.tag! 'n2:BillingStartDate', (options[:start_date].is_a?(Date) ? options[:start_date].to_time : options[:start_date]).utc.iso8601
@@ -250,7 +250,7 @@ module ActiveMerchant #:nodoc:
             xml.tag! 'n2:Version', API_VERSION
             xml.tag! 'ProfileID', profile_id
             if options.has_key?(:amount)
-              xml.tag! 'n2:Amount', options[:amount], 'currencyID' => options[:currency] || 'USD'
+              xml.tag! 'n2:Amount', amount(options[:amount]), 'currencyID' => options[:currency] || 'USD'
             end
             xml.tag! 'n2:Note', options[:note] unless options[:note].blank?
           end
