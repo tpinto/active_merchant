@@ -181,6 +181,7 @@ module ActiveMerchant #:nodoc:
                     xml.tag! 'n2:Amount', amount(options[:trialamount]), 'currencyID' => options[:currency] || 'USD'
                   end        
                 end
+                xml.tag! 'n2:MaxFailedPayments', options[:max_failed_payments] unless options[:max_failed_payments].blank?
                 xml.tag! 'n2:AutoBillOutstandingAmount', options[:auto_bill_outstanding] ? 'AddToNextBilling' : 'NoAutoBill'
               end
             end
@@ -213,6 +214,7 @@ module ActiveMerchant #:nodoc:
               xml.tag! 'n2:Description', options[:description] unless options[:description].blank?
               xml.tag! 'n2:ProfileReference', options[:reference] unless options[:reference].blank?
               xml.tag! 'n2:AdditionalBillingCycles', options[:additional_billing_cycles] unless options[:additional_billing_cycles].blank?
+              xml.tag! 'n2:MaxFailedPayments', options[:max_failed_payments] unless options[:max_failed_payments].blank?
               xml.tag! 'n2:AutoBillOutstandingAmount', options[:auto_bill_outstanding] ? 'AddToNextBilling' : 'NoAutoBill'
               if options.has_key?(:amount)
                 xml.tag! 'n2:Amount', amount(options[:amount]), 'currencyID' => options[:currency] || 'USD'
