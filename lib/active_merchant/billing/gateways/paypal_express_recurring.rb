@@ -173,6 +173,11 @@ module ActiveMerchant #:nodoc:
                   xml.tag! 'n2:TotalBillingCycles', options[:cycles] unless options[:cycles].blank?
                   xml.tag! 'n2:Amount', amount(options[:amount]), 'currencyID' => options[:currency] || 'USD'
                 end
+                if !options[:initial_amount].blank?
+                  xml.tag! 'n2:ActivationDetails' do
+                    xml.tag! 'n2:InitialAmount', amount(options[:initial_amount]), 'currencyID' => options[:currency] || 'USD'
+                  end
+                end
                 if !options[:trialamount].blank?
                   xml.tag! 'n2:TrialPeriod' do
                     xml.tag! 'n2:BillingPeriod', options[:trialperiod] || 'Month'
