@@ -149,21 +149,13 @@ module ActiveMerchant #:nodoc:
             xml.tag! 'n2:CreateRecurringPaymentsProfileRequestDetails' do
               xml.tag! 'Token', token unless token.blank?
               if options[:credit_card]
-                xml.tag! 'n2:CreditCard' do
-                  xml.tag! 'n2:CreditCardType', options[:credit_card][:type]
-                  xml.tag! 'n2:CreditCardNumber', options[:credit_card][:number]
-                  xml.tag! 'n2:ExpMonth', options[:credit_card][:exp_month]
-                  xml.tag! 'n2:ExpYear', options[:credit_card][:exp_year]
-                  xml.tag! 'n2:CVV2', options[:credit_card][:cvv2] unless options[:credit_card][:cvv2].blank?
-                  xml.tag! 'n2:CardOwner', options[:credit_card][:card_owner]
-                  xml.tag! 'n2:StartMonth', options[:credit_card][:start_month] unless options[:credit_card][:start_month].blank?
-                  xml.tag! 'n2:StartYear', options[:credit_card][:start_year] unless options[:credit_card][:start_year].blank?
-                  xml.tag! 'n2:IssueNumber', options[:credit_card][:issue_number] unless options[:credit_card][:issue_number].blank?
-                end
+               add_credit_card(xml, options[:credit_card], (options[:billing_address] || options[:address]), options)
               end
               xml.tag! 'n2:RecurringPaymentsProfileDetails' do
                 xml.tag! 'n2:BillingStartDate', (options[:start_date].is_a?(Date) ? options[:start_date].to_time : options[:start_date]).utc.iso8601
                 xml.tag! 'n2:ProfileReference', options[:reference] unless options[:reference].blank?
+                xml.tag! 'n2:SubscriberName', options[:subscriber_name] unless options[:subscriber_name].blank?
+                add_address(xml, 'n2:SubscriberShippingAddress', (options[:shipping_address] || options[:address])) if options[:shipping_address] || options[:address]
               end
               xml.tag! 'n2:ScheduleDetails' do
                 xml.tag! 'n2:Description', options[:description]
@@ -172,6 +164,7 @@ module ActiveMerchant #:nodoc:
                   xml.tag! 'n2:BillingFrequency', options[:frequency]
                   xml.tag! 'n2:TotalBillingCycles', options[:cycles] unless options[:cycles].blank?
                   xml.tag! 'n2:Amount', amount(options[:amount]), 'currencyID' => options[:currency] || 'USD'
+                  xml.tag! 'n2:TaxAmount', amount(options[:tax_amount] || 0), 'currencyID' => options[:currency] || 'USD'
                 end
                 if !options[:trialamount].blank?
                   xml.tag! 'n2:TrialPeriod' do
@@ -181,13 +174,18 @@ module ActiveMerchant #:nodoc:
                     xml.tag! 'n2:Amount', amount(options[:trialamount]), 'currencyID' => options[:currency] || 'USD'
                   end        
                 end
+                if !options[:initial_amount].blank?
+                  xml.tag! 'n2:ActivationDetails' do
+                    xml.tag! 'n2:InitialAmount', amount(options[:initial_amount]), 'currencyID' => options[:currency] || 'USD'
+                    xml.tag! 'n2:FailedInitialAmountAction', options[:continue_on_failure] ? 'ContinueOnFailure' : 'CancelOnFailure'
+                  end        
+                end
                 xml.tag! 'n2:MaxFailedPayments', options[:max_failed_payments] unless options[:max_failed_payments].blank?
                 xml.tag! 'n2:AutoBillOutstandingAmount', options[:auto_bill_outstanding] ? 'AddToNextBilling' : 'NoAutoBill'
               end
             end
           end
         end
-
         xml.target!
       end
 
@@ -210,6 +208,9 @@ module ActiveMerchant #:nodoc:
             xml.tag! 'n2:Version', API_VERSION
             xml.tag! 'n2:UpdateRecurringPaymentsProfileRequestDetails' do
               xml.tag! 'ProfileID', profile_id
+              if options[:credit_card]
+               add_credit_card(xml, options[:credit_card], options[:address], options)
+              end
               xml.tag! 'n2:Note', options[:note] unless options[:note].blank?
               xml.tag! 'n2:Description', options[:description] unless options[:description].blank?
               xml.tag! 'n2:ProfileReference', options[:reference] unless options[:reference].blank?
@@ -218,6 +219,9 @@ module ActiveMerchant #:nodoc:
               xml.tag! 'n2:AutoBillOutstandingAmount', options[:auto_bill_outstanding] ? 'AddToNextBilling' : 'NoAutoBill'
               if options.has_key?(:amount)
                 xml.tag! 'n2:Amount', amount(options[:amount]), 'currencyID' => options[:currency] || 'USD'
+              end
+              if options.has_key?(:tax_amount)
+                xml.tag! 'n2:TaxAmount', amount(options[:tax_amount] || 0), 'currencyID' => options[:currency] || 'USD'
               end
               if options.has_key?(:start_date)
                 xml.tag! 'n2:BillingStartDate', (options[:start_date].is_a?(Date) ? options[:start_date].to_time : options[:start_date]).utc.iso8601
@@ -259,6 +263,43 @@ module ActiveMerchant #:nodoc:
         end
 
         xml.target!
+      end
+
+      def add_credit_card(xml, credit_card, address, options)
+        xml.tag! 'n2:CreditCard' do
+          xml.tag! 'n2:CreditCardType', credit_card_type(card_brand(credit_card))
+          xml.tag! 'n2:CreditCardNumber', credit_card.number
+          xml.tag! 'n2:ExpMonth', format(credit_card.month, :two_digits)
+          xml.tag! 'n2:ExpYear', format(credit_card.year, :four_digits)
+          xml.tag! 'n2:CVV2', credit_card.verification_value
+          
+          if [ 'switch', 'solo' ].include?(card_brand(credit_card).to_s)
+            xml.tag! 'n2:StartMonth', format(credit_card.start_month, :two_digits) unless credit_card.start_month.blank?
+            xml.tag! 'n2:StartYear', format(credit_card.start_year, :four_digits) unless credit_card.start_year.blank?
+            xml.tag! 'n2:IssueNumber', format(credit_card.issue_number, :two_digits) unless credit_card.issue_number.blank?
+          end
+          
+          xml.tag! 'n2:CardOwner' do
+            xml.tag! 'n2:PayerName' do
+              xml.tag! 'n2:FirstName', credit_card.first_name
+              xml.tag! 'n2:LastName', credit_card.last_name
+            end
+            
+            xml.tag! 'n2:Payer', options[:email]
+            add_address(xml, 'n2:Address', address) if address
+          end
+        end
+      end
+
+      def credit_card_type(type)
+        case type
+        when 'visa'             then 'Visa'
+        when 'master'           then 'MasterCard'
+        when 'discover'         then 'Discover'
+        when 'american_express' then 'Amex'
+        when 'switch'           then 'Switch'
+        when 'solo'             then 'Solo'
+        end
       end
 
       def build_response(success, message, response, options = {})
