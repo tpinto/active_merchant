@@ -71,6 +71,9 @@ instapay:
   login: TEST0
   password:
 
+jetpay:
+  login: TESTTERMINAL
+      
 linkpoint:
   login: STOREID
   pem: |--
@@ -292,6 +295,9 @@ realex_mastercard_coms_error:
 sage:
   login: login
   password: password
+
+sallie_mae:
+  login: TEST0
 
 secure_pay:
   login: LOGIN
