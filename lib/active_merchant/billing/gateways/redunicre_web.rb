@@ -151,11 +151,13 @@ module ActiveMerchant
         xml = Builder::XmlMarkup.new
         
         xml.instruct!
+        
         xml.tag! "SOAP-ENV:Envelope", ENVELOPE_ATTRIBUTES do
           xml.tag! "SOAP-ENV:Body" do
             xml << body
           end
         end
+        
         xml.target!
       end
       
