@@ -66,10 +66,17 @@ module ActiveMerchant
         "#{redirect_url}#{token}"
       end
 
-      def setup_purchase(money, options = {})
+      def do_web_payment(money, options = {})
         requires!(options, :return_url, :cancel_url, :order_ref, :notification_url)
 
         commit 'doWebPayment', build_web_payment_request(101, 'CPT', money, 'USD', options)
+      end
+      
+      def do_authorization(money, options = {})
+        requires!(options, :order_ref, :card)
+        requires!(options[:card], :number, :cvx, :expiration_date, :type)
+
+        commit 'doAuthorization', build_authorization_request(101, 'CPT', money, 'USD', options)
       end
 
       private
@@ -98,9 +105,9 @@ module ActiveMerchant
       end
       
       def add_selected_contract_list(xml)
-        xml.ns2 :selectedContractList do
-          xml.ns1 :selectedContract, @options[:contract_number]
-        end
+        xml.ns2 :selectedContractList# do
+        #  xml.ns1 :selectedContract, nil
+        #end
       end
       
       def add_buyer(xml)
@@ -119,12 +126,67 @@ module ActiveMerchant
   					xml.ns1 :phone,     nil
           end
           
-          xml.ns1 :accountCreateDate,     Time.now.strftime("%d/%m/%y")
+          xml.ns1 :accountCreateDate,     nil #Time.now.strftime("%d/%m/%y")
           xml.ns1 :accountAverageAmount,  nil
           xml.ns1 :accountOrderCount,     nil
           xml.ns1 :walletId,              nil
           xml.ns1 :ip,                    nil
         end
+      end
+      
+      def add_card(xml, options)
+        xml.ns2 :card do
+          xml.ns1 :number,            options[:card][:number]
+          xml.ns1 :type,              CARD_TYPES[options[:card][:type]]
+          xml.ns1 :expirationDate,    options[:card][:expiration_date]
+          xml.ns1 :cvx,               options[:card][:cvx]
+          xml.ns1 :ownerBirthdayDate, nil
+          xml.ns1 :password,          nil
+          xml.ns1 :cardPresent,       nil
+        end
+      end
+      
+      def add_private_data_list(xml)
+        xml << %Q|<ns2:privateDataList>
+  				<ns1:privateData>
+  					<ns1:key>key 1</ns1:key>
+  					<ns1:value>value 1</ns1:value>
+  				</ns1:privateData>
+  				<ns1:privateData>
+  					<ns1:key>key 2</ns1:key>
+  					<ns1:value>value 2</ns1:value>
+  				</ns1:privateData>
+  				<ns1:privateData>
+  					<ns1:key>key 3</ns1:key>
+  					<ns1:value>value 3</ns1:value>
+  				</ns1:privateData>
+  			</ns2:privateDataList>|
+      end
+      
+      def add_authentication_3d_secure(xml)
+        xml << %Q|<ns2:authentication3DSecure>
+  				<ns1:md xsi:nil="true"/>
+  				<ns1:pares xsi:nil="true"/>
+  				<ns1:xid xsi:nil="true"/>
+  				<ns1:eci xsi:nil="true"/>
+  				<ns1:cavv xsi:nil="true"/>
+  				<ns1:cavvAlgorithm xsi:nil="true"/>
+  				<ns1:vadsResult xsi:nil="true"/>
+  				<ns1:typeSecurisation xsi:nil="true"/>
+  			</ns2:authentication3DSecure>|
+      end
+      
+      def build_authorization_request(action, mode, money, currency, options)
+        xml = Builder::XmlMarkup.new
+        xml.ns2 :doAuthorizationRequest do
+          add_payment(xml, money, currency, action, mode)
+          add_card(xml, options)
+          add_order(xml, options, money, currency)
+          add_buyer(xml)
+          add_private_data_list(xml)
+          add_authentication_3d_secure(xml)
+        end
+        xml.target!
       end
 
       def build_web_payment_request(action, mode, money, currency, options)
@@ -179,11 +241,11 @@ module ActiveMerchant
       end
 
       def commit(action, request)
-        puts build_request(request)
-        puts "=============="
-        puts request_headers(action).inspect
-        puts "=============="
-        puts ssl_post(endpoint_url, build_request(request), request_headers(action))
+        #puts build_request(request)
+        #puts "=============="
+        #puts request_headers(action).inspect
+        #puts "=============="
+        #puts ssl_post(endpoint_url, build_request(request), request_headers(action))
         response = parse(action, ssl_post(endpoint_url, build_request(request), request_headers(action)))
         
         #build_response(successful?(response), message_from(response), response,
@@ -203,9 +265,9 @@ module ActiveMerchant
       #  response[:message] || response[:ack]
       #end
       
-      #def parse(body)
-      #  body
-      #end
+      def parse(action, body)
+        body
+      end
     end
   end
 end
