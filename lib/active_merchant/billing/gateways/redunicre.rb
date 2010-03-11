@@ -2,12 +2,22 @@ require 'base64'
 
 module ActiveMerchant
   module Billing
-    class RedunicreWebGateway < Gateway
+    class RedunicreGateway < Gateway
 
-      TEST_URL = 'https://homologation.payline.com/V4/services/WebPaymentAPI'
-      LIVE_URL = 'https://services.payline.com/V4/services/WebPaymentAPI'
-      LIVE_REDIRECT_URL = 'http://change.me.at.line.number.7.redunicre_web.rb.com'
-      TEST_REDIRECT_URL = 'http://change.me.at.line.number.8.redunicre_web.rb.com'
+      TEST_URLS = {
+        :web    => 'https://homologation.payline.com/V4/services/WebPaymentAPI',
+        :direct => 'https://homologation.payline.com/V4/services/DirectPaymentAPI'
+      }
+      
+      LIVE_URLS = {
+        :web    => 'https://services.payline.com/V4/services/WebPaymentAPI',
+        :direct => 'https://services.payline.com/V4/services/DirectPaymentAPI'
+      }
+      
+      ACTIONS_APIS = {
+        'doWebPayment'    => :web,
+        'doAuthorization' => :direct
+      }
 
       # The countries the gateway supports merchants from as 2 digit ISO country codes
       self.supported_countries = ['PT']
@@ -49,21 +59,18 @@ module ActiveMerchant
         'xmlns:SOAP-ENV'  => "http://schemas.xmlsoap.org/soap/envelope/",
         'xmlns:ns1'       => "http://obj.ws.payline.experian.com", #ns1
         'xmlns:xsi'       => "http://www.w3.org/2001/XMLSchema-instance",
-        'xmlns:ns2'      => "http://impl.ws.payline.experian.com" #ns2
+        'xmlns:ns2'       => "http://impl.ws.payline.experian.com" #ns2
+      }
+      
+      CARD_TYPES = {
+        "VISA" => "CB",
+        "MASTERCARD" => "MASTER"
       }
 
       def initialize(options = {})
         requires!(options, :merchant_id, :access_key, :contract_number)
         @options = options
         super
-      end
-
-      def redirect_url
-        test? ? TEST_REDIRECT_URL : LIVE_REDIRECT_URL
-      end
-
-      def redirect_url_for(token)
-        "#{redirect_url}#{token}"
       end
 
       def do_web_payment(money, options = {})
@@ -76,7 +83,7 @@ module ActiveMerchant
         requires!(options, :order_ref, :card)
         requires!(options[:card], :number, :cvx, :expiration_date, :type)
 
-        commit 'doAuthorization', build_authorization_request(101, 'CPT', money, 'USD', options)
+        commit 'doAuthorization', build_authorization_request(101, 'CPT', money, 'EUR', options)
       end
 
       private
@@ -88,7 +95,8 @@ module ActiveMerchant
           xml.ns1 :action,              action
           xml.ns1 :mode,                mode
           xml.ns1 :contractNumber,      @options[:contract_number]
-          xml.ns1 :differedActionDate,  nil
+          #xml << %Q|<ns1:differedActionDate xsi:nil="true"/>|
+          #xml.ns1 :differedActionDate,  nil
         end
       end
       
@@ -98,40 +106,80 @@ module ActiveMerchant
           xml.ns1 :amount,    money
           xml.ns1 :currency,  CURRENCY_CODES[currency]
           xml.ns1 :date,      Time.now.strftime("%d/%m/%Y %H:%M")
-          xml.ns1 :origin,    nil
-          xml.ns1 :country,   nil
-          xml.ns1 :taxes,     nil
+          
+          #xml << %Q|<ns1:origin xsi:nil="true"/>
+  				#<ns1:country xsi:nil="true"/>
+  				#<ns1:taxes xsi:nil="true"/>|
+  				#
+  				#xml << %Q|<ns1:details>
+  				#	<ns1:details>
+  				#		<ns1:ref xsi:nil="true"/>
+  				#		<ns1:price xsi:nil="true"/>
+  				#		<ns1:quantity xsi:nil="true"/>
+  				#		<ns1:comment xsi:nil="true"/>
+  				#	</ns1:details>
+  				#	<ns1:details>
+  				#		<ns1:ref xsi:nil="true"/>
+  				#		<ns1:price xsi:nil="true"/>
+  				#		<ns1:quantity xsi:nil="true"/>
+  				#		<ns1:comment xsi:nil="true"/>
+  				#	</ns1:details>
+  				#</ns1:details>|
+          
+          #xml.ns1 :origin,    nil
+          #xml.ns1 :country,   nil
+          #xml.ns1 :taxes,     nil
         end
       end
       
       def add_selected_contract_list(xml)
-        xml.ns2 :selectedContractList# do
-        #  xml.ns1 :selectedContract, nil
+        xml.ns2 :selectedContractList #do
+          #xml.ns1 :selectedContract, nil
         #end
       end
       
       def add_buyer(xml)
-        xml.ns2 :buyer do
-          xml.ns1 :lastName,  nil
-          xml.ns1 :firstName, nil
-          xml.ns1 :email,     nil
-          
-          xml.ns1 :shippingAdress do
-            xml.ns1 :name,      nil
-  					xml.ns1 :street1,   nil
-  					xml.ns1 :street2,   nil
-  					xml.ns1 :cityName,  nil
-  					xml.ns1 :zipCode,   nil
-  					xml.ns1 :country,   nil
-  					xml.ns1 :phone,     nil
-          end
-          
-          xml.ns1 :accountCreateDate,     nil #Time.now.strftime("%d/%m/%y")
-          xml.ns1 :accountAverageAmount,  nil
-          xml.ns1 :accountOrderCount,     nil
-          xml.ns1 :walletId,              nil
-          xml.ns1 :ip,                    nil
-        end
+        xml.ns2 :buyer# do
+        #  xml.ns1 :lastName,  nil
+        #  xml.ns1 :firstName, nil
+        #  xml.ns1 :email,     nil
+        #  
+        #  xml.ns1 :shippingAdress do
+        #    xml.ns1 :name,      nil
+  			#		xml.ns1 :street1,   nil
+  			#		xml.ns1 :street2,   nil
+  			#		xml.ns1 :cityName,  nil
+  			#		xml.ns1 :zipCode,   nil
+  			#		xml.ns1 :country,   nil
+  			#		xml.ns1 :phone,     nil
+        #  end
+        #  
+        #  xml.ns1 :accountCreateDate,     Time.now.strftime("%d/%m/%y")
+        #  xml.ns1 :accountAverageAmount,  nil
+        #  xml.ns1 :accountOrderCount,     nil
+        #  xml.ns1 :walletId,              nil
+        #  xml.ns1 :ip,                    nil
+        #end
+        
+        #xml << %Q|<ns2:buyer>
+  			#	<ns1:lastName xsi:nil="true"/>
+  			#	<ns1:firstName xsi:nil="true"/>
+  			#	<ns1:email xsi:nil="true"/>
+  			#	<ns1:shippingAdress>
+  			#		<ns1:name xsi:nil="true"/>
+  			#		<ns1:street1 xsi:nil="true"/>
+  			#		<ns1:street2 xsi:nil="true"/>
+  			#		<ns1:cityName xsi:nil="true"/>
+  			#		<ns1:zipCode xsi:nil="true"/>
+  			#		<ns1:country xsi:nil="true"/>
+  			#		<ns1:phone xsi:nil="true"/>
+  			#	</ns1:shippingAdress>
+  			#	<ns1:accountCreateDate>11/03/10</ns1:accountCreateDate>
+  			#	<ns1:accountAverageAmount xsi:nil="true"/>
+  			#	<ns1:accountOrderCount xsi:nil="true"/>
+  			#	<ns1:walletId xsi:nil="true"/>
+  			#	<ns1:ip xsi:nil="true"/>
+  			#</ns2:buyer>|
       end
       
       def add_card(xml, options)
@@ -140,40 +188,47 @@ module ActiveMerchant
           xml.ns1 :type,              CARD_TYPES[options[:card][:type]]
           xml.ns1 :expirationDate,    options[:card][:expiration_date]
           xml.ns1 :cvx,               options[:card][:cvx]
-          xml.ns1 :ownerBirthdayDate, nil
-          xml.ns1 :password,          nil
-          xml.ns1 :cardPresent,       nil
+          
+          #xml << %Q|<ns1:ownerBirthdayDate xsi:nil="true"/>
+  				#<ns1:password xsi:nil="true"/>
+  				#<ns1:cardPresent xsi:nil="true"/>|
+          
+          #xml.ns1 "ownerBirthdayDate", nil
+          #xml.ns1 "password",          nil
+          #xml.ns1 "cardPresent",       nil
         end
       end
       
       def add_private_data_list(xml)
-        xml << %Q|<ns2:privateDataList>
-  				<ns1:privateData>
-  					<ns1:key>key 1</ns1:key>
-  					<ns1:value>value 1</ns1:value>
-  				</ns1:privateData>
-  				<ns1:privateData>
-  					<ns1:key>key 2</ns1:key>
-  					<ns1:value>value 2</ns1:value>
-  				</ns1:privateData>
-  				<ns1:privateData>
-  					<ns1:key>key 3</ns1:key>
-  					<ns1:value>value 3</ns1:value>
-  				</ns1:privateData>
-  			</ns2:privateDataList>|
+        xml.ns2 :privateDataList
+        #xml << %Q|<ns2:privateDataList>
+  			#	<ns1:privateData>
+  			#		<ns1:key/>
+  			#		<ns1:value/>
+  			#	</ns1:privateData>
+  			#	<ns1:privateData>
+  			#		<ns1:key/>
+  			#		<ns1:value/>
+  			#	</ns1:privateData>
+  			#	<ns1:privateData>
+  			#		<ns1:key/>
+  			#		<ns1:value/>
+  			#	</ns1:privateData>
+  			#</ns2:privateDataList>|
       end
       
       def add_authentication_3d_secure(xml)
-        xml << %Q|<ns2:authentication3DSecure>
-  				<ns1:md xsi:nil="true"/>
-  				<ns1:pares xsi:nil="true"/>
-  				<ns1:xid xsi:nil="true"/>
-  				<ns1:eci xsi:nil="true"/>
-  				<ns1:cavv xsi:nil="true"/>
-  				<ns1:cavvAlgorithm xsi:nil="true"/>
-  				<ns1:vadsResult xsi:nil="true"/>
-  				<ns1:typeSecurisation xsi:nil="true"/>
-  			</ns2:authentication3DSecure>|
+        xml.ns2 :authentication3DSecure
+        #xml << %Q|<ns2:authentication3DSecure>
+  			#	<ns1:md xsi:nil="true"/>
+  			#	<ns1:pares xsi:nil="true"/>
+  			#	<ns1:xid xsi:nil="true"/>
+  			#	<ns1:eci xsi:nil="true"/>
+  			#	<ns1:cavv xsi:nil="true"/>
+  			#	<ns1:cavvAlgorithm xsi:nil="true"/>
+  			#	<ns1:vadsResult xsi:nil="true"/>
+  			#	<ns1:typeSecurisation xsi:nil="true"/>
+  			#</ns2:authentication3DSecure>|
       end
       
       def build_authorization_request(action, mode, money, currency, options)
@@ -202,9 +257,14 @@ module ActiveMerchant
           xml.ns2 :notificationURL, options[:notification_url]
           xml.ns2 :languageCode, 'eng'
           xml.ns2 :securityMode, 'SSL'
-          xml.ns2 :recurring, nil
-          xml.ns2 :customPaymentPageCode
-          xml.ns2 :customPaymentTemplateURL
+          
+          #xml << %Q|<ns2:customPaymentPageCode/>
+          #<ns2:recurring xsi:nil="true"/>
+          #<ns2:customPaymentTemplateURL/>|
+          
+          #xml.ns2 "recurring", nil
+          #xml.ns2 :customPaymentPageCode
+          #xml.ns2 :customPaymentTemplateURL
         end
         xml.target!
       end
@@ -223,8 +283,12 @@ module ActiveMerchant
         xml.target!
       end
       
-      def endpoint_url
-        test? ? TEST_URL : LIVE_URL
+      def endpoint_url(action)
+        if test?
+          TEST_URLS[ACTIONS_APIS[action]]
+        else
+          LIVE_URLS[ACTIONS_APIS[action]]
+        end
       end
       
       def encoded_credentials
@@ -241,12 +305,12 @@ module ActiveMerchant
       end
 
       def commit(action, request)
-        #puts build_request(request)
-        #puts "=============="
-        #puts request_headers(action).inspect
-        #puts "=============="
-        #puts ssl_post(endpoint_url, build_request(request), request_headers(action))
-        response = parse(action, ssl_post(endpoint_url, build_request(request), request_headers(action)))
+        puts build_request(request)
+        puts "=============="
+        puts request_headers(action).inspect
+        puts "=============="
+        puts ssl_post(endpoint_url(action), build_request(request), request_headers(action))
+        response = parse(action, ssl_post(endpoint_url(action), build_request(request), request_headers(action)))
         
         #build_response(successful?(response), message_from(response), response,
         #:test => test?,
