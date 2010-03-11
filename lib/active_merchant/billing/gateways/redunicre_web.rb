@@ -76,24 +76,24 @@ module ActiveMerchant
       
       def add_payment(xml, money, currency, action, mode)
         xml.ns2 :payment do
-          xml.ns1 :amount, money
-          xml.ns1 :currency, CURRENCY_CODES[currency]
-          xml.ns1 :action, action
-          xml.ns1 :mode, mode
-          xml.ns1 :contractNumber, @options[:contract_number]
-          xml.ns1 :differedActionDate, nil
+          xml.ns1 :amount,              money
+          xml.ns1 :currency,            CURRENCY_CODES[currency]
+          xml.ns1 :action,              action
+          xml.ns1 :mode,                mode
+          xml.ns1 :contractNumber,      @options[:contract_number]
+          xml.ns1 :differedActionDate,  nil
         end
       end
       
       def add_order(xml, options, money, currency)
         xml.ns2 :order do
-          xml.ns1 :ref, options[:order_ref]
-          xml.ns1 :amount, money
-          xml.ns1 :currency, CURRENCY_CODES[currency]
-          xml.ns1 :date, Time.now.strftime("%d/%m/%Y %H:%M")
-          xml.ns1 :origin, nil
-          xml.ns1 :country, nil
-          xml.ns1 :taxes, nil
+          xml.ns1 :ref,       options[:order_ref]
+          xml.ns1 :amount,    money
+          xml.ns1 :currency,  CURRENCY_CODES[currency]
+          xml.ns1 :date,      Time.now.strftime("%d/%m/%Y %H:%M")
+          xml.ns1 :origin,    nil
+          xml.ns1 :country,   nil
+          xml.ns1 :taxes,     nil
         end
       end
       
@@ -104,50 +104,43 @@ module ActiveMerchant
       end
       
       def add_buyer(xml)
-        xml << %Q|<ns2:buyer>
-  				<ns1:lastName xsi:nil="true"/>
-  				<ns1:firstName xsi:nil="true"/>
-  				<ns1:email xsi:nil="true"/>
-  				<ns1:shippingAdress>
-  					<ns1:name xsi:nil="true"/>
-  					<ns1:street1 xsi:nil="true"/>
-  					<ns1:street2 xsi:nil="true"/>
-  					<ns1:cityName xsi:nil="true"/>
-  					<ns1:zipCode xsi:nil="true"/>
-  					<ns1:country xsi:nil="true"/>
-  					<ns1:phone xsi:nil="true"/>
-  				</ns1:shippingAdress>
-  				<ns1:accountCreateDate>11/03/10</ns1:accountCreateDate>
-  				<ns1:accountAverageAmount xsi:nil="true"/>
-  				<ns1:accountOrderCount xsi:nil="true"/>
-  				<ns1:walletId xsi:nil="true"/>
-  				<ns1:ip xsi:nil="true"/>
-  			</ns2:buyer>|
+        xml.ns2 :buyer do
+          xml.ns1 :lastName,  nil
+          xml.ns1 :firstName, nil
+          xml.ns1 :email,     nil
+          xml.ns1 :shippingAdress do
+            xml.ns1 :name,      nil
+  					xml.ns1 :street1,   nil
+  					xml.ns1 :street2,   nil
+  					xml.ns1 :cityName,  nil
+  					xml.ns1 :zipCode,   nil
+  					xml.ns1 :country,   nil
+  					xml.ns1 :phone,     nil
+          end
+          xml.ns1 :accountCreateDate,     Time.now.strftime("%d/%m/%y")
+          xml.ns1 :accountAverageAmount,  nil
+          xml.ns1 :accountOrderCount,     nil
+          xml.ns1 :walletId,              nil
+          xml.ns1 :ip,                    nil
+        end
       end
 
       def build_web_payment_request(action, mode, money, currency, options)
-        xml = Builder::XmlMarkup.new :indent => 2
+        xml = Builder::XmlMarkup.new
         xml.ns2 :doWebPaymentRequest do
           add_payment(xml, money, currency, action, mode)
+          add_order(xml, options, money, currency)
+          add_selected_contract_list(xml)
+          add_buyer(xml)
           
           xml.ns2 :returnURL, options[:return_url]
           xml.ns2 :cancelURL, options[:cancel_url]
-          
-          add_order(xml, options, money, currency)
-
           xml.ns2 :notificationURL, options[:notification_url]
-          
-          add_selected_contract_list(xml)
-          
           xml.ns2 :languageCode, 'eng'
-          
-          add_buyer(xml)
-          
           xml.ns2 :securityMode, 'SSL'
-          
-          xml << %Q|<ns2:customPaymentPageCode/>
-          <ns2:recurring xsi:nil="true"/>
-    			<ns2:customPaymentTemplateURL/>|
+          xml.ns2 :recurring, nil
+          xml.ns2 :customPaymentPageCode
+          xml.ns2 :customPaymentTemplateURL
         end
         xml.target!
       end
