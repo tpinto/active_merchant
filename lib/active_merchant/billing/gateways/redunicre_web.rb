@@ -108,6 +108,7 @@ module ActiveMerchant
           xml.ns1 :lastName,  nil
           xml.ns1 :firstName, nil
           xml.ns1 :email,     nil
+          
           xml.ns1 :shippingAdress do
             xml.ns1 :name,      nil
   					xml.ns1 :street1,   nil
@@ -117,6 +118,7 @@ module ActiveMerchant
   					xml.ns1 :country,   nil
   					xml.ns1 :phone,     nil
           end
+          
           xml.ns1 :accountCreateDate,     Time.now.strftime("%d/%m/%y")
           xml.ns1 :accountAverageAmount,  nil
           xml.ns1 :accountOrderCount,     nil
