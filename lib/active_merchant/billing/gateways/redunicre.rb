@@ -305,32 +305,69 @@ module ActiveMerchant
       end
 
       def commit(action, request)
-        puts build_request(request)
-        puts "=============="
-        puts request_headers(action).inspect
-        puts "=============="
-        puts ssl_post(endpoint_url(action), build_request(request), request_headers(action))
         response = parse(action, ssl_post(endpoint_url(action), build_request(request), request_headers(action)))
-        
-        #build_response(successful?(response), message_from(response), response,
-        #:test => test?,
-        #:authorization => authorization_from(response),
-        #:fraud_review => fraud_review?(response),
-        #:avs_result => { :code => response[:avs_code] },
-        #:cvv_result => response[:cvv2_code]
-        #)
+        print response.inspect
+        build_response(successful?(response), message_from(response), response,
+        :test => test?,
+        :authorization => authorization_from(response),
+        :fraud_review => fraud_review?(response),
+        :avs_result => { :code => response[:avs_code] },
+        :cvv_result => response[:cvv2_code]
+        )
       end
       
-      #def successful?(response)
-      #  SUCCESS_CODES.include?(response[:ack])
-      #end
-      #
-      #def message_from(response)
-      #  response[:message] || response[:ack]
-      #end
+      def build_response(success, message, response, options = {})
+         Response.new(success, message, response, options)
+      end
       
-      def parse(action, body)
-        body
+      def successful?(response)
+        response[:ack]
+      end
+      
+      def message_from(response)
+        response[:message] || response[:ack]
+      end
+      
+      def parse(action, xml)
+        response = {}
+        
+        error_messages = []
+        error_codes = []
+        
+        xml = REXML::Document.new(xml)
+        if root = REXML::XPath.first(xml, "//#{action}Response")
+          root.elements.each do |node|            
+            case node.name
+            when 'Errors'
+              short_message = nil
+              long_message = nil
+              
+              node.elements.each do |child|
+                case child.name
+                when "LongMessage"
+                  long_message = child.text unless child.text.blank?
+                when "ShortMessage"
+                  short_message = child.text unless child.text.blank?
+                when "ErrorCode"
+                  error_codes << child.text unless child.text.blank?
+                end
+              end
+
+              if message = long_message || short_message
+                error_messages << message
+              end
+            else
+              parse_element(response, node)
+            end
+          end
+          response[:message] = error_messages.uniq.join(". ") unless error_messages.empty?
+          response[:error_codes] = error_codes.uniq.join(",") unless error_codes.empty?
+        elsif root = REXML::XPath.first(xml, "//SOAP-ENV:Fault")
+          parse_element(response, root)
+          response[:message] = "#{response[:faultcode]}: #{response[:faultstring]} - #{response[:detail]}"
+        end
+        
+        response
       end
     end
   end
