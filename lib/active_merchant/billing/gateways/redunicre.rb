@@ -15,8 +15,10 @@ module ActiveMerchant
       }
       
       ACTIONS_APIS = {
-        'doWebPayment'    => :web,
-        'doAuthorization' => :direct
+        'doWebPayment'          => :web,
+        'getWebPaymentDetails'  => :web,
+        'doAuthorization'       => :direct,
+        'doCapture'             => :direct
       }
 
       # The countries the gateway supports merchants from as 2 digit ISO country codes
@@ -63,8 +65,8 @@ module ActiveMerchant
       }
       
       CARD_TYPES = {
-        "VISA" => "CB",
-        "MASTERCARD" => "MASTER"
+        "VISA" => "VISA",
+        "MASTERCARD" => "MASTERCARD"
       }
 
       def initialize(options = {})
@@ -73,20 +75,65 @@ module ActiveMerchant
         super
       end
 
-      def do_web_payment(money, options = {})
-        requires!(options, :return_url, :cancel_url, :order_ref, :notification_url)
+      def setup_payment(money, currency, options = {})
+        @options.has_key?(:return_url) || requires!(options, :return_url)
+        @options.has_key?(:cancel_url) || requires!(options, :cancel_url)
+        @options.has_key?(:notification_url) || requires!(options, :notification_url)
+        
+        requires!(options, :order_ref)
 
-        commit 'doWebPayment', build_web_payment_request(101, 'CPT', money, 'USD', options)
+        commit 'doWebPayment', build_web_payment_request(111, 'CPT', money, currency, options)
       end
       
-      def do_authorization(money, options = {})
-        requires!(options, :order_ref, :card)
-        requires!(options[:card], :number, :cvx, :expiration_date, :type)
-
-        commit 'doAuthorization', build_authorization_request(101, 'CPT', money, 'EUR', options)
+      def details_for(token)        
+        commit 'getWebPaymentDetails', build_web_payment_details_request(token)
       end
+      
+      #def do_authorization(money, options = {})
+      #  requires!(options, :order_ref, :card)
+      #  requires!(options[:card], :number, :cvx, :expiration_date, :type)
+      #
+      #  commit 'doAuthorization', build_authorization_request(101, 'CPT', money, 'EUR', options)
+      #end
+      #
+      #def do_capture(money, transaction_id, options = {})
+      #  commit 'doCapture', build_capture_request(transaction_id, money, 'EUR', 201, 'CPT', options)
+      #end
 
       private
+      
+      def build_web_payment_details_request(token)
+        xml = Builder::XmlMarkup.new
+        xml.ns2 :getWebPaymentDetailsRequest do
+          xml.ns2 :token, token
+        end
+        xml.target!
+      end
+      
+      def build_web_payment_request(action, mode, money, currency, options)
+        xml = Builder::XmlMarkup.new
+        xml.ns2 :doWebPaymentRequest do
+          add_payment(xml, money, currency, action, mode)
+          add_order(xml, options, money, currency)
+          add_selected_contract_list(xml)
+          add_buyer(xml)
+          
+          xml.ns2 :returnURL, options[:return_url] || @options[:return_url]
+          xml.ns2 :cancelURL, options[:cancel_url] || @options[:cancel_url]
+          xml.ns2 :notificationURL, options[:notification_url] || @options[:notification_url]
+          xml.ns2 :languageCode, 'eng'
+          xml.ns2 :securityMode, 'SSL'
+          
+          #xml << %Q|<ns2:customPaymentPageCode/>
+          #<ns2:recurring xsi:nil="true"/>
+          #<ns2:customPaymentTemplateURL/>|
+          
+          #xml.ns2 "recurring", nil
+          #xml.ns2 :customPaymentPageCode
+          #xml.ns2 :customPaymentTemplateURL
+        end
+        xml.target!
+      end
       
       def add_payment(xml, money, currency, action, mode)
         xml.ns2 :payment do
@@ -231,6 +278,17 @@ module ActiveMerchant
   			#</ns2:authentication3DSecure>|
       end
       
+      def build_capture_request(transaction_id, money, currency, action, mode, options)
+        xml = Builder::XmlMarkup.new
+          xml.ns2 :doCaptureRequest do
+            xml.ns2 :transactionID, transaction_id
+            add_payment(xml, money, currency, action, mode)
+            add_private_data_list(xml)
+            xml << %Q|<ns1:sequenceNumber/>|
+          end
+        xml.target!
+      end
+      
       def build_authorization_request(action, mode, money, currency, options)
         xml = Builder::XmlMarkup.new
         xml.ns2 :doAuthorizationRequest do
@@ -240,31 +298,6 @@ module ActiveMerchant
           add_buyer(xml)
           add_private_data_list(xml)
           add_authentication_3d_secure(xml)
-        end
-        xml.target!
-      end
-
-      def build_web_payment_request(action, mode, money, currency, options)
-        xml = Builder::XmlMarkup.new
-        xml.ns2 :doWebPaymentRequest do
-          add_payment(xml, money, currency, action, mode)
-          add_order(xml, options, money, currency)
-          add_selected_contract_list(xml)
-          add_buyer(xml)
-          
-          xml.ns2 :returnURL, options[:return_url]
-          xml.ns2 :cancelURL, options[:cancel_url]
-          xml.ns2 :notificationURL, options[:notification_url]
-          xml.ns2 :languageCode, 'eng'
-          xml.ns2 :securityMode, 'SSL'
-          
-          #xml << %Q|<ns2:customPaymentPageCode/>
-          #<ns2:recurring xsi:nil="true"/>
-          #<ns2:customPaymentTemplateURL/>|
-          
-          #xml.ns2 "recurring", nil
-          #xml.ns2 :customPaymentPageCode
-          #xml.ns2 :customPaymentTemplateURL
         end
         xml.target!
       end
@@ -306,13 +339,11 @@ module ActiveMerchant
 
       def commit(action, request)
         response = parse(action, ssl_post(endpoint_url(action), build_request(request), request_headers(action)))
-        print response.inspect
+
         build_response(successful?(response), message_from(response), response,
-        :test => test?,
-        :authorization => authorization_from(response),
-        :fraud_review => fraud_review?(response),
-        :avs_result => { :code => response[:avs_code] },
-        :cvv_result => response[:cvv2_code]
+          :test => test?,
+          :duplicated => is_duplicated?(response),
+          :is_fraud => fraud_review?(response)
         )
       end
       
@@ -321,14 +352,33 @@ module ActiveMerchant
       end
       
       def successful?(response)
-        response[:ack]
+        response[:code] == "00000"
+      end
+      
+      def is_duplicated?(response)
+        response[:is_duplicated] == "1"
+      end
+      
+      def fraud_review?(response)
+        response[:is_possible_fraud] == "1"
       end
       
       def message_from(response)
-        response[:message] || response[:ack]
+        response[:short_message] || response[:long_message]
       end
       
-      def parse(action, xml)
+      def parse_element(response, node)
+        if node.has_elements?
+          node.elements.each{|e| parse_element(response, e) }
+        else
+          response[node.name.underscore.to_sym] = node.text
+          node.attributes.each do |k, v|
+            response["#{node.name.underscore}_#{k.underscore}".to_sym] = v if k == 'currencyID'
+          end
+        end
+      end
+      
+      def parse(action, xml)          
         response = {}
         
         error_messages = []
