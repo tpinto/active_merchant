@@ -189,15 +189,15 @@ module ActiveMerchant
         xml.ns2 :buyer do
           xml.ns1 :lastName,  buyer[:last_name]
           xml.ns1 :firstName, buyer[:first_name]
-          xml.ns1 :email,     buyer[:email]
-          
+          xml.ns1 :email,     nil
+
           xml.ns1 :shippingAdress do
-            xml.ns1 :name,      nil
-  					xml.ns1 :street1,   nil
-  					xml.ns1 :street2,   nil
-  					xml.ns1 :cityName,  nil
-  					xml.ns1 :zipCode,   nil
-  					xml.ns1 :country,   nil
+            xml.ns1 :name,      buyer[:address][:name]
+  					xml.ns1 :street1,   buyer[:address][:street1]
+  					xml.ns1 :street2,   buyer[:address][:street2]
+  					xml.ns1 :cityName,  buyer[:address][:city]
+  					xml.ns1 :zipCode,   buyer[:address][:zip]
+  					xml.ns1 :country,   buyer[:address][:country]
   					#xml.ns1 :phone,     nil
           end
         #  
