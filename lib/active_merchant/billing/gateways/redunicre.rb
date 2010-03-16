@@ -82,7 +82,7 @@ module ActiveMerchant
         
         requires!(options, :order_ref)
 
-        commit 'doWebPayment', build_web_payment_request(111, 'CPT', money, currency, options)
+        commit 'doWebPayment', build_web_payment_request(101, 'CPT', money, currency, options)
       end
       
       def details_for(token)        
@@ -116,7 +116,7 @@ module ActiveMerchant
           add_payment(xml, money, currency, action, mode)
           add_order(xml, options, money, currency)
           add_selected_contract_list(xml)
-          add_buyer(xml)
+          add_buyer(xml, options[:buyer])
           
           xml.ns2 :returnURL, options[:return_url] || @options[:return_url]
           xml.ns2 :cancelURL, options[:cancel_url] || @options[:cancel_url]
@@ -185,48 +185,28 @@ module ActiveMerchant
         #end
       end
       
-      def add_buyer(xml)
-        xml.ns2 :buyer# do
-        #  xml.ns1 :lastName,  nil
-        #  xml.ns1 :firstName, nil
-        #  xml.ns1 :email,     nil
-        #  
-        #  xml.ns1 :shippingAdress do
-        #    xml.ns1 :name,      nil
-  			#		xml.ns1 :street1,   nil
-  			#		xml.ns1 :street2,   nil
-  			#		xml.ns1 :cityName,  nil
-  			#		xml.ns1 :zipCode,   nil
-  			#		xml.ns1 :country,   nil
-  			#		xml.ns1 :phone,     nil
-        #  end
+      def add_buyer(xml, buyer)
+        xml.ns2 :buyer do
+          xml.ns1 :lastName,  buyer[:last_name]
+          xml.ns1 :firstName, buyer[:first_name]
+          xml.ns1 :email,     buyer[:email]
+          
+          xml.ns1 :shippingAdress do
+            xml.ns1 :name,      nil
+  					xml.ns1 :street1,   nil
+  					xml.ns1 :street2,   nil
+  					xml.ns1 :cityName,  nil
+  					xml.ns1 :zipCode,   nil
+  					xml.ns1 :country,   nil
+  					#xml.ns1 :phone,     nil
+          end
         #  
         #  xml.ns1 :accountCreateDate,     Time.now.strftime("%d/%m/%y")
         #  xml.ns1 :accountAverageAmount,  nil
         #  xml.ns1 :accountOrderCount,     nil
         #  xml.ns1 :walletId,              nil
         #  xml.ns1 :ip,                    nil
-        #end
-        
-        #xml << %Q|<ns2:buyer>
-  			#	<ns1:lastName xsi:nil="true"/>
-  			#	<ns1:firstName xsi:nil="true"/>
-  			#	<ns1:email xsi:nil="true"/>
-  			#	<ns1:shippingAdress>
-  			#		<ns1:name xsi:nil="true"/>
-  			#		<ns1:street1 xsi:nil="true"/>
-  			#		<ns1:street2 xsi:nil="true"/>
-  			#		<ns1:cityName xsi:nil="true"/>
-  			#		<ns1:zipCode xsi:nil="true"/>
-  			#		<ns1:country xsi:nil="true"/>
-  			#		<ns1:phone xsi:nil="true"/>
-  			#	</ns1:shippingAdress>
-  			#	<ns1:accountCreateDate>11/03/10</ns1:accountCreateDate>
-  			#	<ns1:accountAverageAmount xsi:nil="true"/>
-  			#	<ns1:accountOrderCount xsi:nil="true"/>
-  			#	<ns1:walletId xsi:nil="true"/>
-  			#	<ns1:ip xsi:nil="true"/>
-  			#</ns2:buyer>|
+        end
       end
       
       def add_card(xml, options)
