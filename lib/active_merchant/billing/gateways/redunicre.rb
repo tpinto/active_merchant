@@ -80,7 +80,7 @@ module ActiveMerchant
         @options.has_key?(:cancel_url) || requires!(options, :cancel_url)
         @options.has_key?(:notification_url) || requires!(options, :notification_url)
         
-        requires!(options, :order_ref)
+        requires!(options, :order_ref, :buyer)
 
         commit 'doWebPayment', build_web_payment_request(101, 'CPT', money, currency, options)
       end
