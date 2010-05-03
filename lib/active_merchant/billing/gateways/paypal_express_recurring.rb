@@ -172,6 +172,7 @@ module ActiveMerchant #:nodoc:
                   xml.tag! 'n2:BillingFrequency', options[:frequency]
                   xml.tag! 'n2:TotalBillingCycles', options[:cycles] unless options[:cycles].blank?
                   xml.tag! 'n2:Amount', options[:amount], 'currencyID' => options[:currency] || 'USD'
+                  xml.tag! 'n2:TaxAmount', options[:tax_amount], 'currencyID' => options[:currency] || 'USD'
                 end
                 if !options[:trialamount].blank?
                   xml.tag! 'n2:TrialPeriod' do
@@ -181,12 +182,12 @@ module ActiveMerchant #:nodoc:
                     xml.tag! 'n2:Amount', options[:trialamount], 'currencyID' => options[:currency] || 'USD'
                   end        
                 end
+                xml.tag! 'n2:MaxFailedPayments', options[:max_failed_payments] unless options[:max_failed_payments].blank?
                 xml.tag! 'n2:AutoBillOutstandingAmount', options[:auto_bill_outstanding] ? 'AddToNextBilling' : 'NoAutoBill'
               end
             end
           end
         end
-
         xml.target!
       end
 
@@ -213,11 +214,15 @@ module ActiveMerchant #:nodoc:
               xml.tag! 'n2:Description', options[:description] unless options[:description].blank?
               xml.tag! 'n2:ProfileReference', options[:reference] unless options[:reference].blank?
               xml.tag! 'n2:AdditionalBillingCycles', options[:additional_billing_cycles] unless options[:additional_billing_cycles].blank?
+              xml.tag! 'n2:MaxFailedPayments', options[:max_failed_payments] unless options[:max_failed_payments].blank?
               xml.tag! 'n2:AutoBillOutstandingAmount', options[:auto_bill_outstanding] ? 'AddToNextBilling' : 'NoAutoBill'
               if options.has_key?(:amount)
-                xml.tag! 'n2:Amount', options[:amount], 'currencyID' => options[:currency] || 'USD'
+                xml.tag! 'n2:Amount', amount(options[:amount]), 'currencyID' => options[:currency] || 'USD'
               end
-              if options.has_key?(:amount)
+              if options.has_key?(:tax_amount)
+                xml.tag! 'n2:TaxAmount', amount(options[:tax_amount] || 0), 'currencyID' => options[:currency] || 'USD'
+              end
+              if options.has_key?(:start_date)
                 xml.tag! 'n2:BillingStartDate', (options[:start_date].is_a?(Date) ? options[:start_date].to_time : options[:start_date]).utc.iso8601
               end
             end
