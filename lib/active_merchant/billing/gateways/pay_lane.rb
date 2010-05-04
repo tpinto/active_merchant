@@ -38,31 +38,67 @@ module ActiveMerchant #:nodoc:
       end
 
       # should call 'captureSale'
-      def capture(money, options = {})
-        commit('captureSale', build_captureSale_request(money, options))
+      def capture(sale_id, money, options = {})
+        description = options[:description] || ""
+        
+        commit('captureSale', build_captureSale_request(sale_id, money, description))
       end
 
       # should call 'multiSale' with capture_later = false
-      def purchase(money, options = {})
-        commit 'multiSale', build_multiSale_request(money, options.merge({:capture_later => false}))
+      def purchase(money, currency, options = {})
+        commit 'multiSale', build_multiSale_request(money, currency, options.merge({:capture_later => false}))
       end                       
 
       # should call 'closeSaleAuthorization'
       def cancel_authorization(sale_id)
-        commit 'cancelSaleAuthorization'
+        commit 'closeSaleAuthorization', build_closeSaleAuthorization_request(sale_id)
       end
 
       # should call 'refund'
       def refund(sale_id)
-        commit 'refund'
+        raise "Not Implemented"
+        #commit 'refund'
       end
 
       # should call 'resale'
-      def rebill(sale_id)
-        commit 'resale'
+      def rebill(sale_id, money, currency, options = {})
+        requires!(options, :card_code)
+        description = options[:description] || ""
+        
+        commit 'resale', build_resale_request(sale_id, money, currency, description, options[:card_code])
       end
 
       private
+      
+      def build_resale_request(sale_id, money, currency, description, card_code)
+        xml = Builder::XmlMarkup.new
+        xml.ns1 :resale do
+          xml.tag! :id_sale, sale_id
+          xml.tag! :amount, money
+          xml.tag! :currency, currency
+          xml.tag! :card_code, card_code
+          xml.tag! :description, description
+        end
+        xml.target!
+      end
+      
+      def build_captureSale_request(sale_id, money, description)
+        xml = Builder::XmlMarkup.new
+        xml.ns1 :captureSale do
+          xml.tag! :id_sale_authorization, sale_id
+          xml.tag! :amount, money
+          xml.tag! :description, description
+        end
+        xml.target!
+      end
+      
+      def build_closeSaleAuthorization_request(sale_id)
+        xml = Builder::XmlMarkup.new
+        xml.ns1 :closeSaleAuthorization do
+          xml.tag! :id_sale_authorization, sale_id
+        end
+        xml.target!
+      end
 
       def build_multiSale_request(money, currency, options)
         xml = Builder::XmlMarkup.new
@@ -128,7 +164,7 @@ module ActiveMerchant #:nodoc:
         xml.target!
       end
 
-      def endpoint_url(action)
+      def endpoint_url(action = "")
         if test?
           TEST_URL
         else
@@ -151,12 +187,11 @@ module ActiveMerchant #:nodoc:
       end
 
       def commit(action, request)
-        req = build_request(request)
+        request = build_request(request)
+        headers = request_headers(action, request.size)
         
-        resp_body = ssl_post(endpoint_url(action), req, request_headers(action, req.size))
+        response = parse(action, ssl_post(endpoint_url, request, headers))
         
-        response = parse(action, resp_body)
-
         Response.new(successful?(response), message_from(response), response[:DATA]||{})
       end
 
