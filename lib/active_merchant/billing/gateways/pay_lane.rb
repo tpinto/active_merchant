@@ -28,7 +28,7 @@ module ActiveMerchant #:nodoc:
         requires!(options, :login, :password)
         @options = options
         super
-      end  
+      end
 
       # should call 'multiSale' with capture_later = true
       def authorize(money, currency, options = {})
@@ -40,14 +40,14 @@ module ActiveMerchant #:nodoc:
       # should call 'captureSale'
       def capture(sale_id, money, options = {})
         description = options[:description] || ""
-        
+
         commit('captureSale', build_captureSale_request(sale_id, money, description))
       end
 
       # should call 'multiSale' with capture_later = false
       def purchase(money, currency, options = {})
         commit 'multiSale', build_multiSale_request(money, currency, options.merge({:capture_later => false}))
-      end                       
+      end
 
       # should call 'closeSaleAuthorization'
       def cancel_authorization(sale_id)
@@ -69,7 +69,7 @@ module ActiveMerchant #:nodoc:
       end
 
       private
-      
+
       def build_resale_request(sale_id, money, currency, description, card_code)
         xml = Builder::XmlMarkup.new
         xml.ns1 :resale do
@@ -81,7 +81,7 @@ module ActiveMerchant #:nodoc:
         end
         xml.target!
       end
-      
+
       def build_captureSale_request(sale_id, money, description)
         xml = Builder::XmlMarkup.new
         xml.ns1 :captureSale do
@@ -91,7 +91,7 @@ module ActiveMerchant #:nodoc:
         end
         xml.target!
       end
-      
+
       def build_closeSaleAuthorization_request(sale_id)
         xml = Builder::XmlMarkup.new
         xml.ns1 :closeSaleAuthorization do
@@ -189,8 +189,9 @@ module ActiveMerchant #:nodoc:
       def commit(action, request)
         request = build_request(request)
         headers = request_headers(action, request.size)
-        
-        response = parse(action, ssl_post(endpoint_url, request, headers))
+
+        resp_body = ssl_post(endpoint_url, request, headers)
+        response = parse(action, resp_body)
         
         Response.new(successful?(response), message_from(response), response[:DATA]||{})
       end
@@ -198,7 +199,7 @@ module ActiveMerchant #:nodoc:
       def successful?(response)
         !!response[:OK]
       end
-      
+
       def message_from(response)
         response[:OK] || response[:ERROR]
       end
@@ -222,7 +223,7 @@ module ActiveMerchant #:nodoc:
 
         xml = REXML::Document.new(xml)
         if root = REXML::XPath.first(xml, "//#{action}Response")
-          root.elements.each do |node|            
+          root.elements.each do |node|
             case node.name
             when 'Errors'
               short_message = nil
@@ -258,4 +259,3 @@ module ActiveMerchant #:nodoc:
     end
   end
 end
-

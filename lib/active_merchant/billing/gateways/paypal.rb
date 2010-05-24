@@ -26,7 +26,7 @@ module ActiveMerchant #:nodoc:
       end
       
       private
-      
+
       def define_transaction_type(transaction_arg)
         if transaction_arg.is_a?(String)
           return 'DoReferenceTransaction'
@@ -34,11 +34,11 @@ module ActiveMerchant #:nodoc:
           return 'DoDirectPayment'
         end
       end
-      
+
       def build_sale_or_authorization_request(action, money, credit_card_or_referenced_id, options)
         transaction_type = define_transaction_type(credit_card_or_referenced_id)
         reference_id = credit_card_or_referenced_id if transaction_type == "DoReferenceTransaction"
-        
+
         billing_address = options[:billing_address] || options[:address]
         currency_code = options[:currency] || currency(money)
        
