@@ -213,6 +213,13 @@ module ActiveMerchant #:nodoc:
           end
           
           response = parse(raw_response)
+
+          Response.new(response['result'] == 'Success',
+            response['message'],
+            response,
+            :test => test?,
+            :authorization => response["receiptId"])
+
         #rescue ResponseError => e
         #  raw_response = e.response.body
         #  response = response_error(raw_response)
@@ -226,14 +233,6 @@ module ActiveMerchant #:nodoc:
           puts "headers: " + headers.inspect
           puts "resp: " + raw_response.inspect
         end
-
-        #puts response.inspect
-
-        Response.new(response['result'] == 'Success',
-          response['message'],
-          response,
-          :test => test?,
-          :authorization => response["receiptId"])
       end
 
       #def response_error(raw_response)
