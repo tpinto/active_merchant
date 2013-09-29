@@ -213,16 +213,10 @@ module ActiveMerchant #:nodoc:
           end
           
           response = parse(raw_response)
-
-          Response.new(response['result'] == 'Success',
-            response['message'],
-            response,
-            :test => test?,
-            :authorization => response["receiptId"])
-
-        #rescue ResponseError => e
-        #  raw_response = e.response.body
-        #  response = response_error(raw_response)
+          success = response['result'] == 'Success'
+        rescue ResponseError => e
+          raw_response = e.response.body
+          response = response_error(raw_response)
         #rescue JSON::ParserError
         #  response = json_error(raw_response)
         #end
@@ -233,15 +227,21 @@ module ActiveMerchant #:nodoc:
           puts "headers: " + headers.inspect
           puts "resp: " + raw_response.inspect
         end
+
+        Response.new(success,
+            success ? response['message'] : response['errorMessage'],
+            response,
+            :test => test?,
+            :authorization => response["receiptId"])
       end
 
-      #def response_error(raw_response)
-      #  begin
-      #    parse(raw_response)
-      #  rescue JSON::ParserError
-      #    json_error(raw_response)
-      #  end
-      #end
+      def response_error(raw_response)
+        begin
+          parse(raw_response)
+        rescue JSON::ParserError
+          json_error(raw_response)
+        end
+      end
 #
       #def json_error(raw_response)
       #  msg = 'Invalid response received from the Stripe API.  Please contact support@stripe.com if you continue to receive this message.'
