@@ -78,7 +78,7 @@ module ActiveMerchant #:nodoc:
             cv2: creditcard.verification_value
           }
         elsif creditcard.is_a?(String)
-          requires!(options, :judo_consumer_token, :cv2)
+          requires!(options, :judo_consumer_token)
 
           post = {
             yourConsumerReference: options[:customer],
@@ -86,8 +86,7 @@ module ActiveMerchant #:nodoc:
             judoId: judo_id,
             amount: money,
             consumerToken: options[:judo_consumer_token],
-            cardToken: creditcard,
-            cv2: options[:cv2]
+            cardToken: creditcard
           }
         else
           raise "creditcard should be either a CreditCard object or a String."
@@ -220,19 +219,26 @@ module ActiveMerchant #:nodoc:
         #rescue JSON::ParserError
         #  response = json_error(raw_response)
         #end
+
+          puts e.inspect
+          #puts "req to: " + url + path
+          #puts "json: " + post.to_json
+          #puts "headers: " + headers.inspect
+          #puts "resp: " + raw_response.inspect
+
         rescue => e
           puts e.inspect
-          puts "req to: " + url + path
-          puts "json: " + post.to_json
-          puts "headers: " + headers.inspect
-          puts "resp: " + raw_response.inspect
+          #puts "req to: " + url + path
+          #puts "json: " + post.to_json
+          #puts "headers: " + headers.inspect
+          #puts "resp: " + raw_response.inspect
         end
 
-        Response.new(success,
-            success ? response['message'] : response['errorMessage'],
-            response,
-            :test => test?,
-            :authorization => response["receiptId"])
+        return Response.new(success,
+          (success ? response['message'] : response['errorMessage']),
+          response,
+          test: test?,
+          authorization: response["receiptId"]), (url+path), post.to_json, headers.to_json, raw_response
       end
 
       def response_error(raw_response)
