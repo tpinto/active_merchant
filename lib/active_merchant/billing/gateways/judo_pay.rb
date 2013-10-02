@@ -54,9 +54,9 @@ module ActiveMerchant #:nodoc:
             judoId: judo_id,
             amount: money,
             consumerToken: options[:judo_consumer_token],
-            cardToken: creditcard,
-            cv2: options[:cv2]
+            cardToken: creditcard
           }
+          post[:cv2] = options[:cv2] if options[:cv2]
         else
           raise "creditcard should be either a CreditCard object or a String."
         end
@@ -88,6 +88,7 @@ module ActiveMerchant #:nodoc:
             consumerToken: options[:judo_consumer_token],
             cardToken: creditcard
           }
+          post[:cv2] = options[:cv2] if options[:cv2]
         else
           raise "creditcard should be either a CreditCard object or a String."
         end
@@ -129,38 +130,6 @@ module ActiveMerchant #:nodoc:
       end
 
       private
-
-      #def add_local_references_and_metadata(post, options)
-      #  post[:yourConsumerReference] = options[:customer_id]
-      #  post[:yourPaymentReference] = options[:id]
-      #  post[:yourPaymentMetaData] = options[:meta_data]
-      #end
-#
-      #def add_location(post, options)
-      #  post["consumerLocation"] = options[:location]
-      #end
-#
-      #def add_customer_data(post, options)
-      #  post["mobileNumber"] = options[:customer_phone]
-      #  post["emailAddress"] = options[:customer_email]
-      #end
-#
-      #def add_address(post, options)
-      #  post["cardAddress"] = options[:address]
-#
-      #  #{
-      #  #  "line1": "242 Acklam Road",
-      #  #  "line2": "Westbourne Park",
-      #  #  "town": "London",
-      #  #  "postCode": "W10 5JJ"
-      #  #}
-      #end
-#
-      #def add_creditcard(post, creditcard)
-      #  post["cardNumber"] = creditcard[:number]
-      #  post["expiryDate"] = creditcard[:expiry]
-      #  post["cv2"] = creditcard[:code]
-      #endp
 
       def merge_defaults(hash, defs)
         hash.merge(defs) { |key, old, new| old.nil? ? new : old }
