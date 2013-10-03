@@ -187,14 +187,6 @@ module ActiveMerchant #:nodoc:
           response = response_error(raw_response)
         rescue JSON::ParserError
           response = json_error(raw_response)
-        end
-
-          puts e.inspect
-          #puts "req to: " + url + path
-          #puts "json: " + post.to_json
-          #puts "headers: " + headers.inspect
-          #puts "resp: " + raw_response.inspect
-
         rescue => e
           puts e.inspect
           #puts "req to: " + url + path
@@ -217,7 +209,7 @@ module ActiveMerchant #:nodoc:
           json_error(raw_response)
         end
       end
-#
+
       def json_error(raw_response)
         msg = 'Invalid response received from the Stripe API.  Please contact support@stripe.com if you continue to receive this message.'
         msg += "  (The raw response returned by the API was #{raw_response.inspect})"
