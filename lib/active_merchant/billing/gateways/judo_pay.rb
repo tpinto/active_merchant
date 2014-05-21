@@ -34,14 +34,14 @@ module ActiveMerchant #:nodoc:
         options[:merchant] || @api_judo_id
       end
 
-      def authorize(money, creditcard, options = {})
+      def authorize(money, creditcard, options = {}, custom_judo_id = nil)
         requires!(options, :customer, :order_id)
 
         if creditcard.is_a?(ActiveMerchant::Billing::CreditCard)
           post = {
             yourConsumerReference: options[:customer],
             yourPaymentReference: options[:order_id],
-            judoId: judo_id,
+            judoId: custom_judo_id||judo_id,
             amount: money,
             cardNumber: creditcard.number,
             expiryDate: "#{creditcard.month}/#{creditcard.year}",
@@ -53,7 +53,7 @@ module ActiveMerchant #:nodoc:
           post = {
             yourConsumerReference: options[:customer],
             yourPaymentReference: options[:order_id],
-            judoId: judo_id,
+            judoId: custom_judo_id||judo_id,
             amount: money,
             consumerToken: options[:judo_consumer_token],
             cardToken: creditcard
@@ -63,7 +63,7 @@ module ActiveMerchant #:nodoc:
           post = {
             yourConsumerReference: options[:customer],
             yourPaymentReference: options[:order_id],
-            judoId: judo_id,
+            judoId: custom_judo_id||judo_id,
             amount: money,
             cardNumber: creditcard[:cardNumber],
             expiryDate: "#{creditcard[:month]}/#{creditcard[:year]}",
@@ -76,14 +76,14 @@ module ActiveMerchant #:nodoc:
         commit(:post, '/transactions/preauths', post)
       end
 
-      def purchase(money, creditcard, options = {})
+      def purchase(money, creditcard, options = {}, custom_judo_id = nil)
         requires!(options, :customer, :order_id)
 
         if creditcard.is_a?(ActiveMerchant::Billing::CreditCard)
           post = {
             yourConsumerReference: options[:customer],
             yourPaymentReference: options[:order_id],
-            judoId: judo_id,
+            judoId: custom_judo_id||judo_id,
             amount: money,
             cardNumber: creditcard.number,
             expiryDate: "#{creditcard.month}/#{creditcard.year}",
@@ -95,12 +95,22 @@ module ActiveMerchant #:nodoc:
           post = {
             yourConsumerReference: options[:customer],
             yourPaymentReference: options[:order_id],
-            judoId: judo_id,
+            judoId: custom_judo_id||judo_id,
             amount: money,
             consumerToken: options[:judo_consumer_token],
             cardToken: creditcard
           }
           post[:cv2] = options[:cv2] if options[:cv2]
+        elsif creditcard.is_a?(Hash)
+          post = {
+            yourConsumerReference: options[:customer],
+            yourPaymentReference: options[:order_id],
+            judoId: custom_judo_id||judo_id,
+            amount: money,
+            cardNumber: creditcard[:cardNumber],
+            expiryDate: "#{creditcard[:month]}/#{creditcard[:year]}",
+            cv2: creditcard[:cv2]
+          }
         else
           raise "creditcard should be either a CreditCard object or a String."
         end
