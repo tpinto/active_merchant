@@ -1,3 +1,5 @@
+require 'json'
+
 module ActiveMerchant #:nodoc:
   module Billing #:nodoc:
     class JudoPayGateway < Gateway
@@ -57,6 +59,16 @@ module ActiveMerchant #:nodoc:
             cardToken: creditcard
           }
           post[:cv2] = options[:cv2] if options[:cv2]
+        elsif creditcard.is_a?(Hash)
+          post = {
+            yourConsumerReference: options[:customer],
+            yourPaymentReference: options[:order_id],
+            judoId: judo_id,
+            amount: money,
+            cardNumber: creditcard[:cardNumber],
+            expiryDate: "#{creditcard[:month]}/#{creditcard[:year]}",
+            cv2: creditcard[:cv2]
+          }
         else
           raise "creditcard should be either a CreditCard object or a String."
         end
@@ -179,7 +191,7 @@ module ActiveMerchant #:nodoc:
           when :get
             raw_response = ssl_get(url+path+"?"+post_data(post), headers)
           end
-          
+
           response = parse(raw_response)
           success = response['result'] == 'Success'
         rescue ResponseError => e
