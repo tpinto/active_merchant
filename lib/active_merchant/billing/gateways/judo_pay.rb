@@ -151,6 +151,38 @@ module ActiveMerchant #:nodoc:
         commit(:post, '/transactions/refunds', post)
       end
 
+      def web_payment_details(reference)
+        # GET https://partnerapi.judopay-sandbox.com/webpayments/{reference}
+        # API-Version: 3.2.0
+        # Accept: application/json
+        # Authorization: Basic XXXXXXXX
+
+        commit(:get, "/webpayments/#{reference}")
+      end
+
+      def web_payment(money, options = {}, custom_judo_id = nil)
+        # POST https://partnerapi.judopay-sandbox.com/webpayments/payments
+        # API-Version: 3.2.0
+        # Accept: application/json
+        # Authorization: Basic XXXXXXXX
+        #
+        # Required:
+        # judoId ("1234-4567")
+        # amount (12.34)
+        # yourConsumerReference (any string)
+        # yourPaymentReference (any string)
+        requires!(options, :customer, :order_id)
+
+        post = {
+          yourConsumerReference: options[:customer],
+          yourPaymentReference: options[:order_id],
+          judoId: custom_judo_id||judo_id,
+          amount: money
+        }
+
+        commit(:post, '/webpayments/payments', post)
+      end
+
       private
 
       def merge_defaults(hash, defs)
